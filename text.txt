@@ -1,0 +1,345 @@
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+
+// --- Màn hình Đăng ký/Đăng nhập ---
+class AuthScreen extends StatefulWidget {
+  @override
+  _AuthScreenState createState() => _AuthScreenState();
+}
+
+class _AuthScreenState extends State<AuthScreen> {
+  bool _obscureText = true; // Trạng thái ẩn/hiện mật khẩu
+
+  void _togglePasswordVisibility() {
+    setState(() {
+      _obscureText = !_obscureText;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Màu sắc chủ đạo (có thể lấy từ Theme)
+    final Color primaryOrange = Colors.deepOrangeAccent;
+    final Color lightOrange = Colors.orange.shade300;
+    final Color subtlePink = Colors.pink.shade50;
+
+    return Scaffold(
+      // Không cần AppBar cho màn hình này
+      body: Container(
+        // --- Gradient Background ---
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              // Điều chỉnh màu sắc gradient tại đây để có hiệu ứng đẹp nhất
+              subtlePink.withOpacity(0.5),
+              Colors.white,
+              Colors.orange.shade50.withOpacity(0.6),
+            ],
+            stops: [0.0, 0.4, 1.0], // Điều chỉnh điểm dừng của màu
+          ),
+        ),
+        child: SafeArea( // Đảm bảo nội dung không bị che
+          child: SingleChildScrollView( // Cho phép cuộn khi bàn phím hiện lên
+            padding: const EdgeInsets.symmetric(horizontal: 30.0, vertical: 40.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch, // Kéo dài các widget con
+              children: [
+                // --- Title Section ---
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sign up', // Hoặc 'Register', 'Login' tùy ngữ cảnh
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Container(
+                        height: 4,
+                        width: 50,
+                        decoration: BoxDecoration(
+                            color: primaryOrange,
+                            borderRadius: BorderRadius.circular(2)
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 25),
+
+                // --- Welcome Text (Cần xem xét lại nội dung cho phù hợp) ---
+                Text(
+                  'Welcome back !', // Hoặc 'Create your account'
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                SizedBox(height: 40),
+
+                // --- Email Field ---
+                _buildTextField(
+                  hintText: 'Email',
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                SizedBox(height: 20),
+
+                // --- Password Field ---
+                _buildPasswordField(),
+                SizedBox(height: 15),
+
+                // --- Forgot Password ---
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      print('Forgot Password tapped');
+                      // Điều hướng hoặc hiển thị dialog quên mật khẩu
+                    },
+                    child: Text(
+                      'Forgot password ?',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                       padding: EdgeInsets.zero, // Bỏ padding mặc định
+                       minimumSize: Size(50, 30), // Kích thước tối thiểu
+                       alignment: Alignment.centerRight,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 30),
+
+                // --- Register Button (Gradient) ---
+                _buildGradientRegisterButton(primaryOrange, lightOrange),
+                SizedBox(height: 25),
+
+                // --- "Or" Separator ---
+                Text(
+                  'Or',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                SizedBox(height: 25),
+
+                // --- Google Sign-in Button ---
+                _buildGoogleButton(context),
+                SizedBox(height: 40),
+
+                // --- Register Now Link ---
+                _buildRegisterNowLink(context, primaryOrange),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- Helper Widgets ---
+
+  // Widget xây dựng trường nhập liệu chung
+  Widget _buildTextField({
+    required String hintText,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType keyboardType = TextInputType.text,
+    Widget? suffixIcon, // Thêm suffixIcon cho password
+  }) {
+    return TextField(
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      style: TextStyle(color: Colors.black87, fontSize: 15), // Kiểu chữ khi nhập
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
+        prefixIcon: Icon(icon, color: Colors.grey[500], size: 20),
+        suffixIcon: suffixIcon, // Hiển thị icon ẩn/hiện mk
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: EdgeInsets.symmetric(vertical: 18.0, horizontal: 15.0), // Điều chỉnh padding
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide.none, // Bỏ viền mặc định
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Colors.grey.shade200, width: 1.0), // Viền xám rất nhạt khi không focus
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12.0),
+          borderSide: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5), width: 1.5), // Viền màu chính khi focus
+        ),
+        // Thêm hiệu ứng đổ bóng nhẹ
+        // (Sử dụng Container bao ngoài nếu muốn đổ bóng phức tạp hơn)
+         // disabled because textfield is inside a container with gradient background
+         // boxShadow: [
+         //   BoxShadow(
+         //     color: Colors.grey.withOpacity(0.1),
+         //     spreadRadius: 1,
+         //     blurRadius: 5,
+         //     offset: Offset(0, 2),
+         //   ),
+         // ],
+      ),
+    );
+  }
+
+  // Widget xây dựng trường nhập mật khẩu (sử dụng _buildTextField)
+  Widget _buildPasswordField() {
+    return _buildTextField(
+      hintText: 'Password',
+      icon: Icons.lock_outline,
+      obscureText: _obscureText,
+      suffixIcon: IconButton(
+        icon: Icon(
+          _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+          color: Colors.grey[500],
+          size: 20,
+        ),
+        onPressed: _togglePasswordVisibility, // Gọi hàm toggle
+         splashRadius: 20, // Giảm bán kính hiệu ứng splash
+      ),
+    );
+  }
+
+  // Widget xây dựng nút Đăng ký với Gradient
+  Widget _buildGradientRegisterButton(Color color1, Color color2) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color1, color2], // Màu gradient cam
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(12.0),
+         boxShadow: [ // Thêm đổ bóng nhẹ cho nút nổi bật
+           BoxShadow(
+             color: color1.withOpacity(0.4),
+             blurRadius: 8,
+             offset: Offset(0, 4),
+           ),
+         ],
+      ),
+      child: ElevatedButton(
+        onPressed: () {
+          print('Register button pressed');
+          // Xử lý logic đăng ký
+        },
+        child: Text(
+          'REGISTER',
+          style: TextStyle(
+              fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+        ),
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white, // Màu chữ
+          backgroundColor: Colors.transparent, // Nền trong suốt để thấy gradient
+          shadowColor: Colors.transparent, // Bỏ bóng đổ mặc định của ElevatedButton
+          padding: EdgeInsets.symmetric(vertical: 18),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+           elevation: 0, // Bỏ elevation mặc định
+        ),
+      ),
+    );
+  }
+
+  // Widget xây dựng nút Đăng nhập bằng Google
+  Widget _buildGoogleButton(BuildContext context) {
+    return OutlinedButton.icon(
+      icon: Image.asset( // *** Đảm bảo bạn có file ảnh này trong assets ***
+        'assets/google_logo.png',
+        height: 20.0, // Kích thước logo
+      ),
+      label: Text(
+        'Continue with Google',
+        style: TextStyle(
+            color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 15),
+      ),
+      onPressed: () {
+        print('Continue with Google tapped');
+        // Xử lý logic đăng nhập Google
+      },
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.black87,
+        backgroundColor: Colors.white, // Nền trắng
+        padding: EdgeInsets.symmetric(vertical: 16), // Padding dọc
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        side: BorderSide(color: Colors.grey.shade300, width: 1.5), // Viền xám nhạt
+         elevation: 1, // Thêm elevation nhẹ
+      ),
+    );
+  }
+
+  // Widget xây dựng link "Register Now"
+  Widget _buildRegisterNowLink(BuildContext context, Color highlightColor) {
+    return RichText(
+      textAlign: TextAlign.center,
+      text: TextSpan(
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.grey[600],
+          fontFamily: 'Poppins', // Nhớ đặt font chung
+        ),
+        children: <TextSpan>[
+          TextSpan(text: "You don't have an account? "),
+          TextSpan(
+            text: 'Register Now',
+            style: TextStyle(
+              color: highlightColor, // Màu cam nổi bật
+              fontWeight: FontWeight.bold,
+            ),
+            // Thêm hiệu ứng nhấn cho link
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                print('Register Now tapped');
+                // Điều hướng đến màn hình đăng ký (nếu đây là màn hình đăng nhập)
+                // Hoặc xử lý logic khác
+              },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+// ----- Hàm Main để chạy thử màn hình này -----
+// (Bạn có thể tích hợp màn hình này vào luồng ứng dụng chính)
+// void main() {
+//   runApp(MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   @override
+//   Widget build(BuildContext context) {
+//     return MaterialApp(
+//       title: 'Skincare App Auth Demo',
+//       theme: ThemeData(
+//         primarySwatch: Colors.deepOrange, // Chọn màu swatch phù hợp
+//         visualDensity: VisualDensity.adaptivePlatformDensity,
+//         fontFamily: 'Poppins', // Đặt font chữ chung
+//       ),
+//       home: AuthScreen(), // Bắt đầu với màn hình Auth
+//       debugShowCheckedModeBanner: false,
+//     );
+//   }
+// }
