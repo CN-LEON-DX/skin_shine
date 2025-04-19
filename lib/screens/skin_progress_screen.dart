@@ -159,7 +159,6 @@ class _SkinProgressScreenState extends State<SkinProgressScreen> {
               Text('Jan 30', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
             ],
           ),
-          // Placeholder cho nội dung biểu đồ (có thể thêm hình ảnh hoặc widget khác)
           Expanded(
             child: Center(
               child: Text(

@@ -10,6 +10,7 @@ import 'screens/auth_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/cart_screen.dart';
+import 'screens/consultation_screen.dart'; // Thêm import trang Consultation
 import 'package:google_fonts/google_fonts.dart'; // Thêm import Google Fonts
 import '../models/daily_content.dart';
 import '../screens/content_detail_screen.dart';
@@ -24,17 +25,14 @@ void main() {
   );
 }
 
-// MyApp chỉ đơn giản là trả về AppMaterial
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return const AppMaterial();
   }
 }
 
-// Widget mới chứa MaterialApp và truy cập provider
 class AppMaterial extends StatelessWidget {
   const AppMaterial({super.key});
 
@@ -387,7 +385,12 @@ class _HomeScreenState extends State<HomeScreen> {
           icon: Icons.people_outline,
           label: 'Consultation',
           baseColor: Colors.purple,
-          onTap: () { print('Consultation tapped'); },
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => ConsultationScreen()),
+            );
+          },
         ),
       ],
     );

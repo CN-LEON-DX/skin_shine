@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/product.dart';
 import '../widgets/bottom_bar.dart';
 import 'product_details_screen.dart';
+import 'cart_screen.dart';
 
 class ProductSuggestionsScreen extends StatefulWidget {
   @override
@@ -94,8 +95,9 @@ class _ProductSuggestionsScreenState extends State<ProductSuggestionsScreen> {
                             icon: Icon(Icons.shopping_cart_outlined, size: 26),
                             onPressed: () {
                               // Điều hướng đến trang giỏ hàng
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Navigating to cart...'))
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => CartScreen()),
                               );
                             },
                           ),
@@ -291,13 +293,29 @@ class _ProductCard extends StatelessWidget {
   }) : super(key: key);
 
   // Helper method to display product image with fallback
-  Widget _buildProductImage(String imagePath) {
+  Widget _buildProductImage(String imageUrl) {
     try {
-      return Image.asset(
-        imagePath,
+      return Image.network(
+        imageUrl,
         width: 80,
         height: 100,
         fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: 80,
+            height: 100,
+            color: Colors.grey[200],
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
         errorBuilder: (context, error, stackTrace) {
           print('Error loading product image: $error');
           return Container(

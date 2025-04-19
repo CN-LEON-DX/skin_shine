@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/skin_history_screen.dart'; // Import màn hình lịch sử
+import '../screens/chat_screen.dart'; // Import màn hình chat
+import '../screens/consultation_screen.dart'; // Import màn hình consultation
 
 class BottomBar extends StatelessWidget {
   final VoidCallback? onFlarePressed;
@@ -58,9 +60,13 @@ class BottomBar extends StatelessWidget {
             ),
           ),
           IconButton(
-             // Icon mặt cười/chăm sóc da (thay bằng icon phù hợp hơn nếu có)
             icon: Icon(Icons.face_retouching_natural_outlined, color: Colors.grey[600], size: 28),
-            onPressed: onFacePressed ?? () { print('Face icon tapped'); },
+            onPressed: onFacePressed ?? () { 
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ChatScreen()),
+              );
+            },
           ),
         ],
       ),

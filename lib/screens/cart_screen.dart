@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart'; // Đảm bảo import đúng Product và dummyProducts từ đây
+import 'checkout_screen.dart'; // Import CheckoutScreen
 
 class CartScreen extends StatefulWidget {
   const CartScreen({Key? key}) : super(key: key);
@@ -129,11 +130,27 @@ class _CartScreenState extends State<CartScreen> {
               // Ảnh sản phẩm
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset( // Sử dụng Image.asset vì dummy data dùng path local
+                child: Image.network( // Thay Image.asset bằng Image.network
                   item.product.imageUrl,
                   width: 70,
                   height: 70,
                   fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      width: 70,
+                      height: 70,
+                      color: Colors.grey[200],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                              : null,
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    );
+                  },
                   errorBuilder: (context, error, stackTrace) => Container(
                      width: 70,
                      height: 70,
@@ -244,10 +261,19 @@ class _CartScreenState extends State<CartScreen> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                 ScaffoldMessenger.of(context).showSnackBar(
-                   SnackBar(content: Text('Proceeding to Checkout...'))
-                 );
+                //  ScaffoldMessenger.of(context).showSnackBar(
+                //    SnackBar(content: Text('Proceeding to Checkout...'))
+                //  );
                  // Điều hướng đến màn hình thanh toán thực tế
+                 Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (context) => CheckoutScreen(
+                       cartItems: _cartItems,
+                       totalPrice: _totalPrice,
+                     ),
+                   ),
+                 );
               },
               child: Text('Proceed to Checkout'),
               style: ElevatedButton.styleFrom(

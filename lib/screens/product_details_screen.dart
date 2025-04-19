@@ -844,17 +844,22 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
               icon: Icon(Icons.shopping_bag_outlined, size: 20),
               label: Text('Buy Now'),
               onPressed: () {
+                // Create a temporary cart item list with the current product
+                final List<CartItem> buyNowItems = [
+                  CartItem(
+                    product: widget.product, 
+                    quantity: 1
+                  )
+                ];
+                final double buyNowTotal = widget.product.price;
+
+                // Navigate to CheckoutScreen
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => CheckoutScreen(
-                      cartItems: [
-                        CartItem(
-                          product: widget.product,
-                          quantity: 1,
-                        )
-                      ],
-                      totalPrice: widget.product.price,
+                      cartItems: buyNowItems,
+                      totalPrice: buyNowTotal,
                     ),
                   ),
                 );
