@@ -1,8 +1,10 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'register_screen.dart'; // Import RegisterScreen
 import 'forgot_password_screen.dart'; // Import ForgotPasswordScreen
+import '../services/supabase_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({Key? key}) : super(key: key);
@@ -13,11 +15,95 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _obscureText = true; // Trạng thái ẩn/hiện mật khẩu
+  bool _isLoading = false; // Trạng thái loading
+  String _errorMessage = ''; // Thông báo lỗi
+  
+  // Controllers cho các trường nhập liệu
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
 
   void _togglePasswordVisibility() {
     setState(() {
       _obscureText = !_obscureText;
     });
+  }
+  
+  // Xử lý đăng nhập bằng email/password
+  Future<void> _handleEmailLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text;
+      
+      if (email.isEmpty || password.isEmpty) {
+        setState(() {
+          _errorMessage = 'Email and password cannot be empty';
+          _isLoading = false;
+        });
+        return;
+      }
+      
+      final user = await SupabaseService.signInWithEmail(
+        email: email,
+        password: password,
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      if (user != null) {
+        // Đăng nhập thành công, chuyển đến trang chính
+        Navigator.pushReplacementNamed(context, '/home');
+      } else {
+        setState(() {
+          _errorMessage = 'Login failed. Please check your credentials.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+  
+  // Xử lý đăng nhập bằng Google
+  Future<void> _handleGoogleLogin() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
+    
+    try {
+      final user = await SupabaseService.signInWithGoogle(context);
+      
+      setState(() {
+        _isLoading = false;
+      });
+      
+      // Có thể user là null nếu chưa hoàn tất quá trình đăng nhập Google
+      if (user != null) {
+        // Đăng nhập thành công, chuyển đến trang chính
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceAll('Exception: ', '');
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -66,7 +152,7 @@ class _AuthScreenState extends State<AuthScreen> {
               Align(
                 alignment: Alignment.center,
                 child: Text(
-                  'Wellcome back !', // Đổi chữ theo ảnh mẫu
+                  'Welcome back !', // Đổi chữ theo ảnh mẫu
                   style: GoogleFonts.poppins(
                     fontSize: 16,
                     color: Colors.grey[600],
@@ -74,12 +160,39 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
               SizedBox(height: 40),
+              
+              // Hiển thị thông báo lỗi nếu có
+              if (_errorMessage.isNotEmpty) 
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: Container(
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: Text(
+                      _errorMessage,
+                      style: GoogleFonts.poppins(
+                        color: Colors.red[700],
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
 
               // --- Email Field với Shadow ---
               _buildShadowTextField(
                 child: _buildTextField(
+                  controller: _emailController,
                   hintText: 'Email',
-                  icon: Icons.email_outlined,
+                  prefixIcon: SvgPicture.asset(
+                    'assets/images/icon_email.svg',
+                    width: 20,
+                    height: 20,
+                    fit: BoxFit.scaleDown,
+                  ),
                   keyboardType: TextInputType.emailAddress,
                 ),
               ),
@@ -96,7 +209,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 alignment: Alignment.centerRight,
                 child: TextButton(
                   onPressed: () {
-                    print('Forgot Password tapped');
                     // Điều hướng đến màn hình Forgot Password
                     Navigator.push(
                       context,
@@ -172,19 +284,22 @@ class _AuthScreenState extends State<AuthScreen> {
   // Widget xây dựng trường nhập liệu chung (không có đổ bóng)
   Widget _buildTextField({
     required String hintText,
-    required IconData icon,
+    IconData? icon,
+    Widget? prefixIcon,
     bool obscureText = false,
     TextInputType keyboardType = TextInputType.text,
     Widget? suffixIcon,
+    TextEditingController? controller,
   }) {
     return TextField(
+      controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       style: GoogleFonts.poppins(color: Colors.black87, fontSize: 15),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 14),
-        prefixIcon: Icon(icon, color: Colors.grey[500], size: 20),
+        prefixIcon: prefixIcon ?? (icon != null ? Icon(icon, color: Colors.grey[500], size: 20) : null),
         suffixIcon: suffixIcon,
         filled: false, // Không fill màu nền nữa
         border: OutlineInputBorder(
@@ -199,143 +314,171 @@ class _AuthScreenState extends State<AuthScreen> {
           borderRadius: BorderRadius.circular(15.0),
           borderSide: BorderSide.none,
         ),
-        contentPadding: EdgeInsets.symmetric(vertical: 18.0, horizontal: 15.0), // Điều chỉnh padding
+        contentPadding: EdgeInsets.symmetric(vertical: 18.0, horizontal: 15.0),
         isDense: true,
       ),
     );
   }
 
-  // Widget xây dựng trường nhập mật khẩu (sử dụng _buildTextField)
+  // Widget xây dựng trường nhập mật khẩu với khả năng ẩn/hiện
   Widget _buildPasswordField() {
-    return _buildTextField(
-      hintText: 'Password',
-      icon: Icons.lock_outline,
+    return TextField(
+      controller: _passwordController,
       obscureText: _obscureText,
-      suffixIcon: IconButton(
-        icon: Icon(
-          _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-          color: Colors.grey[500],
-          size: 20,
+      style: GoogleFonts.poppins(color: Colors.black87, fontSize: 15),
+      decoration: InputDecoration(
+        hintText: 'Password',
+        hintStyle: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 14),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: SvgPicture.asset(
+            'assets/images/icon_lock.svg',
+            width: 20,
+            height: 20,
+          ),
         ),
-        onPressed: _togglePasswordVisibility,
-        splashRadius: 20,
+        suffixIcon: IconButton(
+          icon: Icon(
+            _obscureText ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            color: Colors.grey[500],
+            size: 20,
+          ),
+          onPressed: _togglePasswordVisibility,
+        ),
+        filled: false,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(15.0),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: EdgeInsets.symmetric(vertical: 18.0, horizontal: 15.0),
+        isDense: true,
       ),
     );
   }
 
-  // Widget xây dựng nút Đăng nhập với Gradient
-  Widget _buildGradientLoginButton(Color color1, Color color2) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [color1, color2], // Màu gradient cam -> vàng
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+  // Widget tạo nút Login với Gradient
+  Widget _buildGradientLoginButton(Color startColor, Color endColor) {
+    return ElevatedButton(
+      onPressed: _isLoading ? null : _handleEmailLogin,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.transparent, // Bỏ màu nền mặc định
+        foregroundColor: Colors.white,
+        disabledForegroundColor: Colors.white.withOpacity(0.8),
+        shadowColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(30.0),
         ),
-        borderRadius: BorderRadius.circular(15.0), // Bo tròn hơn
-        boxShadow: [ // Thêm đổ bóng nhẹ cho nút nổi bật
-          BoxShadow(
-            color: color1.withOpacity(0.3),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ],
+        padding: EdgeInsets.zero, // Reset padding để sử dụng Ink
       ),
-      child: ElevatedButton(
-        onPressed: () {
-          print('Login button pressed');
-          Navigator.pushReplacementNamed(context, '/home');
-        },
-        child: Text(
-          'LOGIN',
-          style: GoogleFonts.poppins(
-            fontSize: 16, 
-            fontWeight: FontWeight.bold, 
-            letterSpacing: 0.5
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: _isLoading 
+                ? [Colors.grey[400]!, Colors.grey[500]!] 
+                : [startColor, endColor],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
           ),
+          borderRadius: BorderRadius.circular(30.0),
         ),
-        style: ElevatedButton.styleFrom(
-          foregroundColor: Colors.white,
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          padding: EdgeInsets.symmetric(vertical: 18),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          elevation: 0,
+        child: Container(
+          height: 55.0, // Chiều cao cố định
+          alignment: Alignment.center,
+          child: _isLoading 
+            ? SizedBox(
+                width: 20, 
+                height: 20, 
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ))
+            : Text(
+                'Login',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
         ),
       ),
     );
   }
 
-  // Widget xây dựng nút Đăng nhập bằng Google
+  // Widget tạo nút đăng nhập Google
   Widget _buildGoogleButton(BuildContext context) {
     return OutlinedButton(
-      onPressed: () {
-        print('Continue with Google tapped');
-      },
+      onPressed: _isLoading ? null : _handleGoogleLogin,
       style: OutlinedButton.styleFrom(
-        foregroundColor: Colors.black87,
         backgroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(vertical: 16),
+        foregroundColor: Colors.black87,
+        side: BorderSide(color: Colors.grey[300]!),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15.0),
+          borderRadius: BorderRadius.circular(30.0),
         ),
-        side: BorderSide(color: Colors.grey.shade200, width: 1.0), // Viền nhạt hơn
-        elevation: 2, // Thêm chút bóng đổ
-        shadowColor: Colors.grey.withOpacity(0.1), // Màu bóng đổ
+        padding: EdgeInsets.zero,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            height: 24,
-            width: 24,
-            child: _buildGoogleLogo(),
-          ),
-          SizedBox(width: 12),
-          Text(
-            'Continue with Google',
-            style: GoogleFonts.poppins(
-              color: Colors.black87, 
-              fontWeight: FontWeight.w600, 
-              fontSize: 15
+      child: Container(
+        height: 55.0,
+        alignment: Alignment.center,
+        child: _isLoading 
+          ? SizedBox(
+              width: 20, 
+              height: 20, 
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.grey[700],
+              ))
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SvgPicture.asset(
+                  'assets/images/icon_google.svg',
+                  width: 24,
+                  height: 24,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Sign in with Google',
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
       ),
     );
   }
 
-  // Phương thức để tạo logo Google nhiều màu sắc
-  Widget _buildGoogleLogo() {
-    return CustomPaint(
-      size: Size(24, 24),
-      painter: GoogleLogoPainter(),
-    );
-  }
-
-  // Widget xây dựng link "Register Now"
-  Widget _buildRegisterNowLink(BuildContext context, Color highlightColor) {
+  // Widget xây dựng link Register Now
+  Widget _buildRegisterNowLink(BuildContext context, Color accentColor) {
     return RichText(
       textAlign: TextAlign.center,
       text: TextSpan(
         style: GoogleFonts.poppins(
-          fontSize: 14,
           color: Colors.grey[600],
+          fontSize: 14,
         ),
-        children: <TextSpan>[
-          TextSpan(text: "You don't have an account? "),
+        children: [
+          TextSpan(text: 'Don\'t have an account? '),
           TextSpan(
-            text: 'Register Now',
+            text: 'Register now',
             style: GoogleFonts.poppins(
-              color: highlightColor,
-              fontWeight: FontWeight.bold,
+              color: accentColor,
+              fontWeight: FontWeight.w600,
             ),
             recognizer: TapGestureRecognizer()
               ..onTap = () {
-                print('Register Now tapped');
-                // Điều hướng đến màn hình đăng ký
+                // Điều hướng đến màn hình Register
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => RegisterScreen()),
@@ -346,95 +489,4 @@ class _AuthScreenState extends State<AuthScreen> {
       ),
     );
   }
-}
-
-// Custom Painter để vẽ logo Google đa màu
-class GoogleLogoPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final double width = size.width;
-    final double height = size.height;
-    
-    // Màu sắc của logo Google
-    final Color blue = Color(0xFF4285F4);
-    final Color red = Color(0xFFEA4335);
-    final Color yellow = Color(0xFFFBBC05);
-    final Color green = Color(0xFF34A853);
-    
-    final Paint paint = Paint()..style = PaintingStyle.fill;
-    
-    // Vẽ chữ G với các màu sắc
-    final Path path = Path();
-    
-    // Phần màu xanh dương (bên phải)
-    paint.color = blue;
-    path.moveTo(width * 0.6, height * 0.5);
-    path.arcTo(
-      Rect.fromLTRB(width * 0.1, height * 0.1, width * 0.9, height * 0.9),
-      -Math.pi / 4,
-      Math.pi / 2,
-      false,
-    );
-    path.lineTo(width * 0.9, height * 0.5);
-    path.close();
-    canvas.drawPath(path, paint);
-    
-    // Phần màu đỏ (trên cùng)
-    paint.color = red;
-    path.reset();
-    path.moveTo(width * 0.5, height * 0.25);
-    path.arcTo(
-      Rect.fromLTRB(width * 0.1, height * 0.1, width * 0.9, height * 0.9),
-      -5 * Math.pi / 4,
-      Math.pi / 2,
-      false,
-    );
-    path.lineTo(width * 0.5, height * 0.5);
-    path.close();
-    canvas.drawPath(path, paint);
-    
-    // Phần màu vàng (bên trái)
-    paint.color = yellow;
-    path.reset();
-    path.moveTo(width * 0.3, height * 0.5);
-    path.arcTo(
-      Rect.fromLTRB(width * 0.1, height * 0.1, width * 0.9, height * 0.9),
-      3 * Math.pi / 4,
-      Math.pi / 2,
-      false,
-    );
-    path.lineTo(width * 0.5, height * 0.5);
-    path.close();
-    canvas.drawPath(path, paint);
-    
-    // Phần màu xanh lá (dưới cùng)
-    paint.color = green;
-    path.reset();
-    path.moveTo(width * 0.5, height * 0.75);
-    path.arcTo(
-      Rect.fromLTRB(width * 0.1, height * 0.1, width * 0.9, height * 0.9),
-      Math.pi / 4,
-      Math.pi / 2,
-      false,
-    );
-    path.lineTo(width * 0.5, height * 0.5);
-    path.close();
-    canvas.drawPath(path, paint);
-    
-    // Phần trắng ở giữa
-    paint.color = Colors.white;
-    canvas.drawCircle(
-      Offset(width * 0.5, height * 0.5),
-      width * 0.2,
-      paint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-// Thêm Math class để sử dụng pi
-class Math {
-  static const double pi = 3.1415926535897932;
 } 

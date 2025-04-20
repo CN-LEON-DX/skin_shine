@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'expert_profile_screen.dart';
+import 'user_profile_screen.dart';
 
 class Expert {
   final String id;
@@ -25,6 +27,9 @@ class ChatMessage {
   final DateTime timestamp;
   final bool isRead;
   final bool isSentByMe;
+  final MessageType type;
+  final String? mediaUrl;
+  final String? mediaThumb;
 
   ChatMessage({
     required this.id,
@@ -33,8 +38,13 @@ class ChatMessage {
     required this.timestamp,
     this.isRead = false,
     this.isSentByMe = false,
+    this.type = MessageType.text,
+    this.mediaUrl,
+    this.mediaThumb,
   });
 }
+
+enum MessageType { text, image, video, document }
 
 class ChatScreen extends StatefulWidget {
   final String? expertId;
@@ -47,7 +57,12 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isSearching = false;
+  String _searchQuery = '';
+  List<ChatMessage> _searchResults = [];
+  bool _showMediaGallery = false;
   
   // Danh sách các chuyên gia mẫu
   final List<Expert> _experts = [
@@ -167,6 +182,35 @@ class _ChatScreenState extends State<ChatScreen> {
         timestamp: DateTime.now().subtract(Duration(hours: 12)),
         isRead: true,
       ),
+      ChatMessage(
+        id: 'm8',
+        senderId: 'user',
+        content: 'Here\'s a photo of the redness I mentioned.',
+        timestamp: DateTime.now().subtract(Duration(hours: 10)),
+        isRead: true,
+        isSentByMe: true,
+        type: MessageType.image,
+        mediaUrl: 'https://via.placeholder.com/500x500/ffcccc/000000?text=Skin+Photo',
+        mediaThumb: 'https://via.placeholder.com/100x100/ffcccc/000000?text=Skin+Photo',
+      ),
+      ChatMessage(
+        id: 'm9',
+        senderId: 'e1',
+        content: 'I can see the irritation. Thank you for sharing this. Based on the photo, I recommend using a gentle cleanser with ceramides.',
+        timestamp: DateTime.now().subtract(Duration(hours: 9)),
+        isRead: true,
+        type: MessageType.text,
+      ),
+      ChatMessage(
+        id: 'm10',
+        senderId: 'e1',
+        content: 'Here\'s a product recommendation',
+        timestamp: DateTime.now().subtract(Duration(hours: 8)),
+        isRead: true,
+        type: MessageType.image,
+        mediaUrl: 'https://via.placeholder.com/500x500/f0f8ff/000000?text=Product+Recommendation',
+        mediaThumb: 'https://via.placeholder.com/100x100/f0f8ff/000000?text=Product+Recommendation',
+      ),
     ];
     
     // Tạo các tin nhắn mẫu cho Dr. James Peterson
@@ -266,388 +310,707 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: _currentExpert == null
-            ? Text('Messages')
-            : Row(
-                children: [
-                  CircleAvatar(
-                    backgroundImage: NetworkImage(_currentExpert!.avatar),
-                    radius: 16,
-                  ),
-                  SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _currentExpert!.name,
-                        style: GoogleFonts.poppins(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        _currentExpert!.isOnline ? 'Online' : 'Offline',
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          color: _currentExpert!.isOnline ? Colors.green[400] : Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+        title: _isSearching 
+          ? TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search in conversation',
+                border: InputBorder.none,
+                hintStyle: TextStyle(color: Colors.grey),
               ),
-        centerTitle: _currentExpert == null,
-        actions: [
-          if (_currentExpert != null)
-            IconButton(
-              icon: Icon(Icons.info_outline),
-              onPressed: () {
-                // Show expert info/profile
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${_currentExpert!.name}\'s profile would show here')),
-                );
-              },
-            ),
-        ],
-      ),
-      body: _currentExpert == null
-          ? _buildChatList()
-          : Column(
+              onChanged: _searchMessages,
+              autofocus: true,
+            ) 
+          : Row(
               children: [
-                Expanded(
-                  child: _buildChatMessages(_currentExpert!.id),
-                ),
-                _buildMessageInput(),
+                if (_currentExpert != null)
+                  GestureDetector(
+                    onTap: () {
+                      // Navigate to expert profile
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => 
+                          ExpertProfileScreen(expertId: _currentExpert!.id)
+                        ),
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: NetworkImage(_currentExpert!.avatar),
+                          radius: 16,
+                        ),
+                        SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              _currentExpert!.name,
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            Text(
+                              _currentExpert!.isOnline ? 'Online' : 'Offline',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _currentExpert!.isOnline 
+                                  ? Colors.green.shade400 
+                                  : Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
+        actions: [
+          if (!_isSearching)
+            IconButton(
+              icon: Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
+          if (_isSearching)
+            IconButton(
+              icon: Icon(Icons.close),
+              onPressed: () {
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _searchResults = [];
+                });
+              },
+            ),
+          IconButton(
+            icon: Icon(Icons.more_vert),
+            onPressed: () {
+              _showChatOptions();
+            },
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Media gallery
+          if (_showMediaGallery)
+            _buildMediaGallery(),
+          
+          // Search results
+          if (_isSearching && _searchResults.isNotEmpty)
+            _buildSearchResults(),
+            
+          // Chat messages
+          if (!_isSearching || _searchResults.isEmpty)
+            Expanded(
+              child: _currentExpert == null
+                ? Center(child: Text('Select a conversation to start chatting'))
+                : _buildChatMessages(),
+            ),
+          
+          // Message input
+          if (_currentExpert != null)
+            _buildMessageInput(),
+        ],
+      ),
     );
   }
   
-  Widget _buildChatList() {
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(vertical: 10),
-      itemCount: _experts.length,
-      itemBuilder: (context, index) {
-        final expert = _experts[index];
-        final expertChats = _chats[expert.id] ?? [];
-        final lastMessage = expertChats.isNotEmpty
-            ? expertChats.last
-            : null;
-        final unreadCount = expertChats.where((msg) => !msg.isRead && !msg.isSentByMe).length;
-        
-        return ListTile(
-          leading: Stack(
-            children: [
-              CircleAvatar(
-                backgroundImage: NetworkImage(expert.avatar),
-                radius: 24,
-              ),
-              if (expert.isOnline)
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                  ),
+  Widget _buildMediaGallery() {
+    final mediaMessages = _getMediaMessages();
+    
+    return Container(
+      height: 150,
+      width: double.infinity,
+      color: Colors.grey[100],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Media',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-            ],
-          ),
-          title: Text(
-            expert.name,
-            style: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
+                IconButton(
+                  icon: Icon(Icons.close, size: 20),
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                  onPressed: () {
+                    setState(() {
+                      _showMediaGallery = false;
+                    });
+                  },
+                ),
+              ],
             ),
           ),
-          subtitle: lastMessage != null
-              ? Text(
-                  lastMessage.content,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-                    fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
-                  ),
-                )
-              : Text(
-                  expert.title,
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    fontStyle: FontStyle.italic,
-                  ),
+          Expanded(
+            child: mediaMessages.isEmpty
+              ? Center(child: Text('No media shared in this conversation'))
+              : ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: mediaMessages.length,
+                  padding: EdgeInsets.symmetric(horizontal: 8),
+                  itemBuilder: (context, index) {
+                    final message = mediaMessages[index];
+                    return GestureDetector(
+                      onTap: () {
+                        _showFullMediaView(message);
+                      },
+                      child: Container(
+                        width: 100,
+                        margin: EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          image: DecorationImage(
+                            image: NetworkImage(message.mediaThumb ?? message.mediaUrl!),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (lastMessage != null)
-                Text(
-                  _formatMessageTime(lastMessage.timestamp),
-                  style: GoogleFonts.poppins(
-                    fontSize: 12,
-                    color: Colors.grey[500],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildSearchResults() {
+    return Expanded(
+      child: ListView.builder(
+        itemCount: _searchResults.length,
+        padding: EdgeInsets.all(12),
+        itemBuilder: (context, index) {
+          final message = _searchResults[index];
+          return Card(
+            margin: EdgeInsets.only(bottom: 8),
+            child: ListTile(
+              leading: GestureDetector(
+                onTap: () {
+                  if (message.senderId == 'user') {
+                    // Navigate to user profile
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => 
+                        UserProfileScreen(userId: 'current-user-id', username: 'You')
+                      ),
+                    );
+                  } else {
+                    // Navigate to expert profile
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => 
+                        ExpertProfileScreen(expertId: message.senderId)
+                      ),
+                    );
+                  }
+                },
+                child: CircleAvatar(
+                  backgroundImage: NetworkImage(
+                    message.senderId == 'user'
+                      ? 'https://placehold.co/50x50/E1BEE7/000?text=ME'
+                      : _experts.firstWhere((e) => e.id == message.senderId).avatar
                   ),
+                  radius: 20,
                 ),
-              if (unreadCount > 0)
-                Container(
-                  margin: EdgeInsets.only(top: 4),
-                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.purple[600],
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    unreadCount.toString(),
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      color: Colors.white,
+              ),
+              title: Text(
+                message.senderId == 'user'
+                  ? 'You'
+                  : _experts.firstWhere((e) => e.id == message.senderId).name,
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    message.content,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                ),
-            ],
-          ),
-          onTap: () {
-            setState(() {
-              _currentExpert = expert;
-            });
-          },
-        );
-      },
+                  Text(
+                    DateFormat('MMM d, yyyy · h:mm a').format(message.timestamp),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
+              onTap: () {
+                // Scroll to the message in chat
+                setState(() {
+                  _isSearching = false;
+                  _searchController.clear();
+                  
+                  // Find the index of the message in the chat
+                  final expertId = _currentExpert!.id;
+                  final chat = _chats[expertId]!;
+                  final messageIndex = chat.indexWhere((m) => m.id == message.id);
+                  
+                  // Highlight the message
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_scrollController.hasClients && messageIndex >= 0) {
+                      // Calculate position in the list
+                      final itemPosition = messageIndex * 70.0; // Approximate height
+                      _scrollController.animateTo(
+                        itemPosition,
+                        duration: Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    }
+                  });
+                });
+              },
+            ),
+          );
+        },
+      ),
     );
   }
   
-  Widget _buildChatMessages(String expertId) {
+  Widget _buildChatMessages() {
+    final expertId = _currentExpert!.id;
     final messages = _chats[expertId] ?? [];
-    
-    if (messages.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 60, color: Colors.grey[400]),
-            SizedBox(height: 16),
-            Text(
-              'No messages yet',
-              style: GoogleFonts.poppins(
-                fontSize: 16,
-                color: Colors.grey[600],
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              'Start a conversation with ${_currentExpert?.name.split(' ').first}',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.grey[500],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
     
     return ListView.builder(
       controller: _scrollController,
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
-        final previousMessage = index > 0 ? messages[index - 1] : null;
-        final showTimestamp = previousMessage == null ||
-            !_isSameDay(message.timestamp, previousMessage.timestamp) ||
-            message.timestamp.difference(previousMessage.timestamp).inHours > 1;
-            
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (showTimestamp)
-              _buildTimestampDivider(message.timestamp),
-            _buildMessageBubble(message),
-          ],
-        );
-      },
-    );
-  }
-  
-  Widget _buildTimestampDivider(DateTime timestamp) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Row(
-        children: [
-          Expanded(child: Divider()),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              _formatMessageDate(timestamp),
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: Colors.grey[500],
-              ),
-            ),
+        final showAvatar = !message.isSentByMe;
+        final isConsecutive = index > 0 && 
+          messages[index - 1].senderId == message.senderId &&
+          message.timestamp.difference(messages[index - 1].timestamp).inMinutes < 2;
+        
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: 8,
+            top: isConsecutive ? 0 : 8,
           ),
-          Expanded(child: Divider()),
-        ],
-      ),
-    );
-  }
-  
-  Widget _buildMessageBubble(ChatMessage message) {
-    final isSentByMe = message.isSentByMe;
-    final alignment = isSentByMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
-    final bubbleColor = isSentByMe ? Colors.purple[100] : Colors.grey[100];
-    final textColor = Colors.black87;
-    
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: 10,
-        left: isSentByMe ? 60 : 0,
-        right: isSentByMe ? 0 : 60,
-      ),
-      child: Column(
-        crossAxisAlignment: alignment,
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.circular(18).copyWith(
-                bottomLeft: isSentByMe ? Radius.circular(18) : Radius.circular(5),
-                bottomRight: isSentByMe ? Radius.circular(5) : Radius.circular(18),
-              ),
-            ),
-            child: Text(
-              message.content,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: textColor,
-              ),
-            ),
-          ),
-          SizedBox(height: 4),
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: message.isSentByMe
+              ? MainAxisAlignment.end
+              : MainAxisAlignment.start,
             children: [
-              Text(
-                _formatMessageTime(message.timestamp),
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: Colors.grey[500],
+              if (showAvatar && !isConsecutive)
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to expert profile
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => 
+                        ExpertProfileScreen(expertId: expertId)
+                      ),
+                    );
+                  },
+                  child: CircleAvatar(
+                    backgroundImage: NetworkImage(_currentExpert!.avatar),
+                    radius: 16,
+                  ),
+                ),
+              if (showAvatar && isConsecutive)
+                SizedBox(width: 32),
+              if (!showAvatar)
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to user profile when their avatar is clicked
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => 
+                        UserProfileScreen(userId: 'current-user-id', username: 'You')
+                      ),
+                    );
+                  },
+                  child: CircleAvatar(
+                    backgroundImage: NetworkImage('https://placehold.co/50x50/E1BEE7/000?text=ME'),
+                    radius: 16,
+                  ),
+                ),
+              
+              SizedBox(width: 8),
+              
+              // Message content
+              GestureDetector(
+                onLongPress: () {
+                  _showMessageOptions(message);
+                },
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.7,
+                  ),
+                  padding: message.type == MessageType.text
+                    ? EdgeInsets.symmetric(horizontal: 16, vertical: 12)
+                    : EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: message.isSentByMe
+                      ? Colors.purple[100]
+                      : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: message.type == MessageType.text
+                    ? Text(message.content)
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (message.content.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, top: 8, right: 8, bottom: 4),
+                              child: Text(message.content),
+                            ),
+                          GestureDetector(
+                            onTap: () {
+                              _showFullMediaView(message);
+                            },
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                message.mediaUrl!,
+                                height: 180,
+                                width: 200,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 180,
+                                    width: 200,
+                                    color: Colors.grey[300],
+                                    child: Center(
+                                      child: Icon(Icons.image_not_supported, color: Colors.grey[500]),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                 ),
               ),
-              if (isSentByMe) ...[
-                SizedBox(width: 5),
-                Icon(
-                  message.isRead ? Icons.done_all : Icons.done,
-                  size: 14,
-                  color: message.isRead ? Colors.blue[300] : Colors.grey[400],
-                ),
-              ],
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
   
   Widget _buildMessageInput() {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12).copyWith(
-        bottom: 16 + MediaQuery.of(context).padding.bottom,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 3,
-            offset: Offset(0, -2),
+            offset: Offset(0, -1),
           ),
         ],
       ),
       child: Row(
         children: [
           IconButton(
-            icon: Icon(Icons.photo_library, color: Colors.grey[600]),
-            padding: EdgeInsets.zero,
-            constraints: BoxConstraints(),
+            icon: Icon(Icons.add_photo_alternate_outlined, color: Colors.grey[700]),
             onPressed: () {
-              // Image upload functionality would go here
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Gallery option would open here')),
+              showModalBottomSheet(
+                context: context,
+                builder: (context) {
+                  return Container(
+                    height: 120,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          leading: Icon(Icons.photo_library_outlined),
+                          title: Text('Gallery'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // Here you would implement image picker
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Gallery picker would open here'))
+                            );
+                          },
+                        ),
+                        ListTile(
+                          leading: Icon(Icons.camera_alt_outlined),
+                          title: Text('Camera'),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // Here you would implement camera
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Camera would open here'))
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           ),
-          SizedBox(width: 12),
           Expanded(
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  hintText: 'Type a message...',
-                  hintStyle: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                  border: InputBorder.none,
+            child: TextField(
+              controller: _messageController,
+              decoration: InputDecoration(
+                hintText: 'Message...',
+                hintStyle: TextStyle(color: Colors.grey[500]),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
                 ),
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
+                filled: true,
+                fillColor: Colors.grey[100],
+                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
+              maxLines: 5,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
             ),
           ),
-          SizedBox(width: 12),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.purple[600],
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: Icon(Icons.send, color: Colors.white, size: 20),
-              onPressed: _sendMessage,
-            ),
+          IconButton(
+            icon: Icon(Icons.send, color: Colors.purple),
+            onPressed: _sendMessage,
           ),
         ],
       ),
     );
   }
   
-  String _formatMessageTime(DateTime dateTime) {
-    return DateFormat('HH:mm').format(dateTime);
+  void _showChatOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library_outlined),
+                title: Text('View Media & Files'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _showMediaGallery = true;
+                  });
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.search),
+                title: Text('Search in Conversation'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _isSearching = true;
+                  });
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.person_outline),
+                title: Text('View Profile'),
+                onTap: () {
+                  Navigator.pop(context);
+                  if (_currentExpert != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => 
+                        ExpertProfileScreen(expertId: _currentExpert!.id)
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
   
-  String _formatMessageDate(DateTime dateTime) {
-    final now = DateTime.now();
-    final yesterday = DateTime(now.year, now.month, now.day - 1);
-    final messageDate = DateTime(dateTime.year, dateTime.month, dateTime.day);
-    
-    if (messageDate == DateTime(now.year, now.month, now.day)) {
-      return 'Today';
-    } else if (messageDate == yesterday) {
-      return 'Yesterday';
-    } else if (now.difference(messageDate).inDays < 7) {
-      return DateFormat('EEEE').format(dateTime); // Day of week
-    } else {
-      return DateFormat('MMM d, yyyy').format(dateTime); // Month day, year
+  void _showMessageOptions(ChatMessage message) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Container(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.copy_outlined),
+                title: Text('Copy Text'),
+                onTap: () {
+                  Navigator.pop(context);
+                  // Here you would implement copy to clipboard
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Message copied to clipboard'))
+                  );
+                },
+              ),
+              if (message.type == MessageType.image)
+                ListTile(
+                  leading: Icon(Icons.save_alt_outlined),
+                  title: Text('Save Image'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Here you would implement save image
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Image would be saved to gallery'))
+                    );
+                  },
+                ),
+              if (message.isSentByMe)
+                ListTile(
+                  leading: Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text('Delete Message', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // Here you would implement delete message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Message deleted'))
+                    );
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+  
+  void _showFullMediaView(ChatMessage message) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: GestureDetector(
+              onTap: () {
+                // Navigate to appropriate profile when clicking on name in media view
+                Navigator.pop(context);
+                if (message.senderId == 'user') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => 
+                      UserProfileScreen(userId: 'current-user-id', username: 'You')
+                    ),
+                  );
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => 
+                      ExpertProfileScreen(expertId: message.senderId)
+                    ),
+                  );
+                }
+              },
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(
+                      message.senderId == 'user' 
+                        ? 'https://placehold.co/50x50/E1BEE7/000?text=ME'
+                        : _experts.firstWhere((e) => e.id == message.senderId).avatar
+                    ),
+                    radius: 16,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    message.senderId == 'user' 
+                      ? 'You'
+                      : _experts.firstWhere((e) => e.id == message.senderId).name
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.save_alt),
+                onPressed: () {
+                  // Save image logic
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Image would be saved to gallery'))
+                  );
+                },
+              ),
+              IconButton(
+                icon: Icon(Icons.share),
+                onPressed: () {
+                  // Share image logic
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Sharing options would open'))
+                  );
+                },
+              ),
+            ],
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              boundaryMargin: EdgeInsets.all(100),
+              minScale: 0.5,
+              maxScale: 3.0,
+              child: Image.network(
+                message.mediaUrl!,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: Colors.grey[300],
+                    child: Center(
+                      child: Icon(Icons.image_not_supported, color: Colors.grey[500], size: 100),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Search in messages
+  void _searchMessages(String query) {
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+      });
+      return;
     }
+    
+    final expertId = _currentExpert?.id;
+    if (expertId == null) return;
+    
+    final messages = _chats[expertId] ?? [];
+    final results = messages.where((message) => 
+      message.content.toLowerCase().contains(query.toLowerCase())
+    ).toList();
+    
+    setState(() {
+      _searchResults = results;
+    });
   }
-  
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
+
+  // Get all media messages from the current chat
+  List<ChatMessage> _getMediaMessages() {
+    final expertId = _currentExpert?.id;
+    if (expertId == null) return [];
+    
+    final messages = _chats[expertId] ?? [];
+    return messages.where((message) => 
+      message.type == MessageType.image || message.type == MessageType.video
+    ).toList();
   }
 } 

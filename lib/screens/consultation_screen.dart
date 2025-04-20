@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'dart:math' as math;
 import 'expert_profile_screen.dart';
 import 'chat_screen.dart';
+import 'user_profile_screen.dart';
 
 // Enum để xác định loại bài đăng
 enum PostType { userQuestion, expertAdvice, beforeAfter }
@@ -653,16 +654,21 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
               children: [
                 // User avatar
                 GestureDetector(
-                  onTap: post.isExpert ? () {
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => ExpertProfileScreen(
-                          expertId: _experts.firstWhere((e) => e.name == post.userName, orElse: () => _experts.first).id,
-                        ),
+                        builder: (context) => post.isExpert 
+                          ? ExpertProfileScreen(
+                              expertId: _experts.firstWhere((e) => e.name == post.userName, orElse: () => _experts.first).id,
+                            )
+                          : UserProfileScreen(
+                              userId: post.id,
+                              username: post.userName,
+                            ),
                       ),
                     );
-                  } : null,
+                  },
                   child: CircleAvatar(
                     backgroundColor: Colors.purple[100],
                     radius: 20,
@@ -680,11 +686,28 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            post.userName,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => post.isExpert 
+                                    ? ExpertProfileScreen(
+                                        expertId: _experts.firstWhere((e) => e.name == post.userName, orElse: () => _experts.first).id,
+                                      )
+                                    : UserProfileScreen(
+                                        userId: post.id,
+                                        username: post.userName,
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              post.userName,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                              ),
                             ),
                           ),
                           if (post.isExpert) ...[
@@ -1058,12 +1081,29 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: Colors.purple[100],
-            child: Text(
-              comment.userName.substring(0, comment.userName.length > 2 ? 2 : 1),
-              style: TextStyle(color: Colors.purple[800], fontSize: 12),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => comment.isExpert 
+                    ? ExpertProfileScreen(
+                        expertId: _experts.firstWhere((e) => e.name == comment.userName, orElse: () => _experts.first).id,
+                      )
+                    : UserProfileScreen(
+                        userId: comment.id,
+                        username: comment.userName,
+                      ),
+                ),
+              );
+            },
+            child: CircleAvatar(
+              radius: 18,
+              backgroundColor: Colors.purple[100],
+              child: Text(
+                comment.userName.substring(0, comment.userName.length > 2 ? 2 : 1),
+                style: TextStyle(color: Colors.purple[800], fontSize: 12),
+              ),
             ),
           ),
           SizedBox(width: 10),
@@ -1082,11 +1122,28 @@ class _ConsultationScreenState extends State<ConsultationScreen> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            comment.userName,
-                            style: GoogleFonts.poppins(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => comment.isExpert 
+                                    ? ExpertProfileScreen(
+                                        expertId: _experts.firstWhere((e) => e.name == comment.userName, orElse: () => _experts.first).id,
+                                      )
+                                    : UserProfileScreen(
+                                        userId: comment.id,
+                                        username: comment.userName,
+                                      ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              comment.userName,
+                              style: GoogleFonts.poppins(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                           if (comment.isExpert) ...[

@@ -14,27 +14,55 @@ import 'screens/consultation_screen.dart'; // Thêm import trang Consultation
 import 'package:google_fonts/google_fonts.dart'; // Thêm import Google Fonts
 import '../models/daily_content.dart';
 import '../screens/content_detail_screen.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/supabase_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'utils/auth_guard.dart';
+import 'utils/activity_observer.dart';
+import 'screens/otp_verification_screen.dart';
 // import 'package:flutter/ui/painting/hsl_color.dart'; // Đã xóa dòng này
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Khởi tạo Supabase
+  await SupabaseService.initialize();
+  
+  // Kiểm tra xác thực khi khởi động
+  await SupabaseService.checkAuthSessionOnStart();
+  
+  // Kiểm tra trạng thái đăng nhập
+  final isAuthenticated = await SupabaseService.isAuthenticated();
+  
   runApp(
     ChangeNotifierProvider(
       create: (context) => ThemeProvider(),
-      child: const MyApp(), // MyApp không cần truy cập provider nữa
+      child: MyApp(isUserAuthenticated: isAuthenticated), 
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final bool isUserAuthenticated;
+  
+  const MyApp({
+    super.key, 
+    required this.isUserAuthenticated,
+  });
+  
   @override
   Widget build(BuildContext context) {
-    return const AppMaterial();
+    return AppMaterial(isUserAuthenticated: isUserAuthenticated);
   }
 }
 
 class AppMaterial extends StatelessWidget {
-  const AppMaterial({super.key});
+  final bool isUserAuthenticated;
+  
+  const AppMaterial({
+    super.key,
+    required this.isUserAuthenticated,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -106,17 +134,75 @@ class AppMaterial extends StatelessWidget {
     );
 
     return MaterialApp(
-      title: 'Skincare App UI',
+      title: 'Skin Shine',
       theme: lightTheme,
       darkTheme: darkTheme,
       themeMode: themeProvider.themeMode,
-      initialRoute: '/login',
+      initialRoute: isUserAuthenticated ? '/home' : '/login',
+      navigatorObservers: [
+        ActivityObserver(), // Thêm observer để theo dõi hoạt động
+      ],
       routes: {
         '/login': (context) => AuthScreen(),
         '/register': (context) => RegisterScreen(),
         '/forgot-password': (context) => ForgotPasswordScreen(),
-        '/home': (context) => HomeScreen(),
-        '/cart': (context) => CartScreen(),
+        '/otp-verification': (context) {
+          // Nhận tham số từ arguments
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          return OtpVerificationScreen(
+            userId: args['userId'],
+            email: args['email'],
+          );
+        },
+        '/home': (context) => UserActivityDetector(
+          child: AuthGuard(child: HomeScreen())
+        ),
+        '/cart': (context) => UserActivityDetector(
+          child: AuthGuard(child: CartScreen())
+        ),
+      },
+      // Thêm onGenerateRoute để xử lý các route không có trong danh sách routes
+      onGenerateRoute: (settings) {
+        // Danh sách các route không cần xác thực
+        final unprotectedRoutes = ['/login', '/register', '/forgot-password'];
+        
+        // Nếu route không cần xác thực, cho phép truy cập
+        if (unprotectedRoutes.contains(settings.name)) {
+          return null;
+        }
+        
+        // Các route khác đều yêu cầu xác thực
+        Widget page;
+        
+        switch (settings.name) {
+          case '/camera':
+            page = CameraScreen();
+            break;
+          case '/profile':
+            page = ProfileScreen();
+            break;
+          case '/consultation':
+            page = ConsultationScreen();
+            break;
+          case '/product-suggestions':
+            page = ProductSuggestionsScreen();
+            break;
+          case '/skin-progress':
+            page = SkinProgressScreen();
+            break;
+          default:
+            page = HomeScreen();
+        }
+        
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (context) => UserActivityDetector(
+            child: AuthGuard(
+              child: page,
+              emailVerificationRequired: true,
+            ),
+          ),
+        );
       },
       debugShowCheckedModeBanner: false,
     );

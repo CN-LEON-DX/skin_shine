@@ -11,6 +11,16 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // TextControllers for edit profile dialog
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+
+  // TextControllers for change password dialog
+  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _newPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+  
   // --- Trạng thái giả lập cho các cài đặt (ví dụ) ---
   String selectedLanguage = 'English';
   bool faceIdEnabled = true;
@@ -22,6 +32,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final String userName = 'Sarah Johnson';
   final String userEmail = 'sarah.j@email.com';
   final String profileImageUrl = 'https://via.placeholder.com/150/aabbcc/000000?text=Sarah'; // Thay bằng URL ảnh thật
+
+  // Initialize controllers in initState
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = userName;
+    _emailController.text = userEmail;
+    _phoneController.text = '+84 123 456 789'; // Example default value
+  }
+
+  // Clean up controllers in dispose
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   // Hàm xử lý logout (hiển thị dialog xác nhận)
   void _handleLogout(BuildContext context) {
@@ -181,7 +212,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   context,
                   icon: Icons.lock_outline,
                   title: 'Change Password',
-                  onTap: () { print('Navigate to Change Password'); },
+                  onTap: () {
+                    _showChangePasswordDialog(context, primaryColor);
+                  },
                   iconColor: iconColor,
                 ),
                  _buildDivider(dividerColor),
@@ -365,7 +398,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             IconButton(
                icon: Icon(Icons.edit_outlined, color: primaryColor, size: 22),
                tooltip: 'Edit Profile',
-               onPressed: () { print('Edit profile info tapped'); },
+               onPressed: () {
+                 _showEditProfileDialog(context, primaryColor);
+               },
                splashRadius: 24,
                constraints: BoxConstraints(),
             ),
@@ -555,5 +590,317 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           );
         });
+  }
+
+  // Show Edit Profile Dialog
+  void _showEditProfileDialog(BuildContext context, Color primaryColor) {
+    // Variable to track if user has selected a new image
+    bool hasSelectedNewImage = false;
+    // Temp variable to hold the current image URL
+    String tempProfileImageUrl = profileImageUrl;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              title: Row(
+                children: [
+                  Icon(Icons.person_outline, color: primaryColor),
+                  SizedBox(width: 10),
+                  Text('Edit Profile', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Profile Image Section
+                    Center(
+                      child: Stack(
+                        children: [
+                          // Profile Picture
+                          CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.grey[200],
+                            backgroundImage: hasSelectedNewImage 
+                              ? AssetImage('assets/images/placeholder.png') // Replace with actual image handling
+                              : NetworkImage(tempProfileImageUrl) as ImageProvider,
+                            onBackgroundImageError: (exception, stackTrace) {
+                              print("Error loading profile image: $exception");
+                            },
+                          ),
+                          // Edit Icon
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: GestureDetector(
+                              onTap: () {
+                                // Here you would implement image picker
+                                setState(() {
+                                  hasSelectedNewImage = true;
+                                  // In a real app, you would update tempProfileImageUrl with the new image
+                                  // For demo, we just toggle a flag
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Image picker would open here'))
+                                );
+                              },
+                              child: Container(
+                                height: 32,
+                                width: 32,
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    
+                    // Form Fields
+                    TextField(
+                      controller: _nameController,
+                      decoration: InputDecoration(
+                        labelText: 'Full Name',
+                        prefixIcon: Icon(Icons.person, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    TextField(
+                      controller: _emailController,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.email_outlined, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                    ),
+                    SizedBox(height: 15),
+                    TextField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Phone Number',
+                        prefixIcon: Icon(Icons.phone_outlined, color: primaryColor),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      keyboardType: TextInputType.phone,
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+                  onPressed: () {
+                    // Reset controllers to original values
+                    _nameController.text = userName;
+                    _emailController.text = userEmail;
+                    _phoneController.text = '+84 123 456 789';
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+                ElevatedButton(
+                  child: Text('Save'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    // Here you would save the changes to your database
+                    print('Profile updated with: ${_nameController.text}, ${_emailController.text}, ${_phoneController.text}');
+                    // Also save the new profile picture if selected
+                    if (hasSelectedNewImage) {
+                      print('New profile picture would be saved');
+                    }
+                    
+                    // For demo just show a success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Profile information updated successfully!'))
+                    );
+                    
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
+  }
+
+  // Show Change Password Dialog
+  void _showChangePasswordDialog(BuildContext context, Color primaryColor) {
+    bool _obscureCurrentPassword = true;
+    bool _obscureNewPassword = true;
+    bool _obscureConfirmPassword = true;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              title: Row(
+                children: [
+                  Icon(Icons.lock_outline, color: primaryColor),
+                  SizedBox(width: 10),
+                  Text('Change Password', style: TextStyle(fontSize: 18)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _currentPasswordController,
+                      obscureText: _obscureCurrentPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Current Password',
+                        prefixIcon: Icon(Icons.lock, color: primaryColor),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureCurrentPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureCurrentPassword = !_obscureCurrentPassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    TextField(
+                      controller: _newPasswordController,
+                      obscureText: _obscureNewPassword,
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureNewPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureNewPassword = !_obscureNewPassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 15),
+                    TextField(
+                      controller: _confirmPasswordController,
+                      obscureText: _obscureConfirmPassword,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm New Password',
+                        prefixIcon: Icon(Icons.lock_outline, color: primaryColor),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                            color: Colors.grey,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: <Widget>[
+                TextButton(
+                  child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
+                  onPressed: () {
+                    // Clear password fields
+                    _currentPasswordController.clear();
+                    _newPasswordController.clear();
+                    _confirmPasswordController.clear();
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+                ElevatedButton(
+                  child: Text('Update'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: () {
+                    // Validate password inputs
+                    if (_currentPasswordController.text.isEmpty ||
+                        _newPasswordController.text.isEmpty ||
+                        _confirmPasswordController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Please fill in all password fields'))
+                      );
+                      return;
+                    }
+                    
+                    // Check if new passwords match
+                    if (_newPasswordController.text != _confirmPasswordController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('New passwords do not match'))
+                      );
+                      return;
+                    }
+                    
+                    // Here you would verify the current password and update it in your database
+                    print('Password changed successfully');
+                    
+                    // Show success message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Password updated successfully!'))
+                    );
+                    
+                    // Clear fields and close dialog
+                    _currentPasswordController.clear();
+                    _newPasswordController.clear();
+                    _confirmPasswordController.clear();
+                    Navigator.of(ctx).pop();
+                  },
+                ),
+              ],
+            );
+          }
+        );
+      },
+    );
   }
 } 
